@@ -18,7 +18,6 @@ use SEEC\PhpUnit\Helper\ConsecutiveParams;
 use Snc\RedisBundle\Factory\PhpredisClientFactory;
 use Snc\RedisBundle\Logger\RedisCallInterceptor;
 use Snc\RedisBundle\Logger\RedisLogger;
-use Snc\RedisBundle\Tests\Factory\TestDouble\RecordingRedis;
 use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 
 use function assert;
@@ -61,26 +60,6 @@ class PhpredisClientFactoryTest extends TestCase
         $this->assertSame(0, $client->getDBNum());
         $this->assertNull($client->getAuth());
         $this->assertNull($client->getPersistentID());
-    }
-
-    public function testReadWriteTimeoutIsUsedForInitialPersistentConnection(): void
-    {
-        RecordingRedis::$initialReadTimeout = null;
-
-        $client = (new PhpredisClientFactory(new RedisCallInterceptor($this->redisLogger)))->create(
-            RecordingRedis::class,
-            ['redis://localhost:6379'],
-            [
-                'connection_timeout' => 5,
-                'connection_persistent' => true,
-                'read_write_timeout' => 1.5,
-            ],
-            'default',
-            false,
-        );
-
-        $this->assertInstanceOf(Redis::class, $client);
-        $this->assertSame(1.5, RecordingRedis::$initialReadTimeout);
     }
 
     /** @requires extension relay */
@@ -555,6 +534,10 @@ class PhpredisClientFactoryTest extends TestCase
 
     public function testCreateWithConnectionPersistentTrue(): void
     {
+        $this->logger->method('debug')->with(...$this->withConsecutive(
+            ['Executing command "PCONNECT localhost 6379 5 default 1 1.5"'],
+        ));
+
         $factory = new PhpredisClientFactory(new RedisCallInterceptor($this->redisLogger));
 
         $client = $factory->create(
@@ -563,9 +546,10 @@ class PhpredisClientFactoryTest extends TestCase
             [
                 'connection_timeout' => 5,
                 'connection_persistent' => true,
+                'read_write_timeout' => 1.5,
             ],
             'default',
-            false,
+            true,
         );
 
         $this->assertInstanceOf(Redis::class, $client);
@@ -593,6 +577,10 @@ class PhpredisClientFactoryTest extends TestCase
 
     public function testCreateWithConnectionPersistentFalse(): void
     {
+        $this->logger->method('debug')->with(...$this->withConsecutive(
+            ['Executing command "CONNECT localhost 6379 5 <null> 1 1.5"'],
+        ));
+
         $factory = new PhpredisClientFactory(new RedisCallInterceptor($this->redisLogger));
 
         $client = $factory->create(
@@ -601,9 +589,10 @@ class PhpredisClientFactoryTest extends TestCase
             [
                 'connection_timeout' => 5,
                 'connection_persistent' => false,
+                'read_write_timeout' => 1.5,
             ],
             'default',
-            false,
+            true,
         );
 
         $this->assertInstanceOf(Redis::class, $client);

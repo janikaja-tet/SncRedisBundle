@@ -346,7 +346,7 @@ class PhpredisClientFactory
             $dsn->getPort(),
             $options['connection_timeout'],
             $persistentId,
-            5, // retry interval
+            (int) ($options['read_write_timeout'] ?? 5), // retry interval
             $options['read_write_timeout'] ?? 5, // read timeout
             $context,
         ];
