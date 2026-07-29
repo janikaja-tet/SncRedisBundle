@@ -347,7 +347,7 @@ class PhpredisClientFactory
             $options['connection_timeout'],
             $persistentId,
             5, // retry interval
-            5, // read timeout
+            $options['read_write_timeout'] ?? 5, // read timeout
             $context,
         ];
 
